@@ -20,38 +20,19 @@
           <h1>Office plánovač</h1>
         </div>
       </div>
-      <div id="account-area" class="account-area" hidden>
-        <span id="signed-in-as" class="signed-in-as"></span>
-        <button id="logout-button" class="button button-quiet" type="button">Odhlásiť sa</button>
-      </div>
     </header>
 
     <section id="config-warning" class="notice notice-warning" hidden>
-      <strong>Ešte treba nastaviť databázu.</strong>
-      <p>Aby sa tímové zmeny ukladali a zobrazovali všetkým kolegom, musí správca najprv pripojiť databázu Supabase a nastaviť prihlasovanie. Bez databázy aplikácia ešte nie je pripravená na ostré používanie.</p>
+      <strong>Plánovač sa nepodarilo pripojiť.</strong>
+      <p>Skús obnoviť stránku. Ak problém pretrváva, kontaktuj správcu aplikácie.</p>
     </section>
 
-    <section id="login-panel" class="login-panel" hidden>
-      <div class="login-copy">
-        <span class="login-icon" aria-hidden="true">↗</span>
-        <p class="eyebrow">VITAJTE V TÍMOVOM PLÁNOVAČI</p>
-        <h2>Kto príde tento týždeň do officu?</h2>
-        <p>Prihlás sa pracovným e-mailom, ktorý ti správca vopred pozval do plánovača. Pošleme ti jednorazový prihlasovací odkaz.</p>
-      </div>
-      <form id="login-form" class="login-form">
-        <label for="email-input">Pracovný e-mail</label>
-        <input id="email-input" name="email" type="email" placeholder="meno@firma.com" autocomplete="email" required>
-        <button class="button button-primary button-wide" type="submit">Poslať prihlasovací odkaz</button>
-        <p id="login-message" class="form-message" role="status"></p>
-      </form>
-    </section>
-
-    <section id="planner-panel" hidden>
+    <section id="planner-panel">
       <div class="intro-row">
         <div>
           <p class="eyebrow">DOHODNITE SA VOPRED</p>
           <h2>Kto bude v kancelárii?</h2>
-          <p class="intro-text">Vyber týždeň a označ pri každom dni, či prídeš.</p>
+          <p class="intro-text">Pridaj svoje meno a označ, či prídeš do officu.</p>
         </div>
         <button id="refresh-button" class="button button-quiet refresh-button" type="button" title="Obnoviť údaje">↻ <span>Obnoviť</span></button>
       </div>
@@ -84,18 +65,18 @@
         <div class="add-person-copy">
           <div class="add-person-icon" aria-hidden="true">＋</div>
           <div>
-            <h3>Pridať kolegu alebo kolegyňu</h3>
-            <p>Meno sa uloží do tímového zoznamu a zostane aj na ďalšie týždne.</p>
+            <h3>Pridaj sa do plánu</h3>
+            <p>Zadaj svoje meno. V zozname potom označ jednotlivé dni.</p>
           </div>
         </div>
         <form id="add-person-form" class="add-person-form">
-          <label class="visually-hidden" for="name-input">Meno kolegu</label>
-          <input id="name-input" name="name" type="text" maxlength="70" placeholder="Zadaj meno" required>
-          <button class="button button-primary" type="submit">Pridať meno</button>
+          <label class="visually-hidden" for="name-input">Tvoje meno</label>
+          <input id="name-input" name="name" type="text" maxlength="70" placeholder="Tvoje meno" autocomplete="name" required>
+          <button class="button button-primary" type="submit">Pridať sa</button>
         </form>
       </div>
       <p id="app-message" class="app-message" role="status"></p>
-      <footer class="footer-note">Zmeny sa ukladajú priebežne a zdieľajú sa s prihláseným tímom.</footer>
+      <footer class="footer-note">Plán je spoločný pre všetkých. Zmeny sa ukladajú automaticky.</footer>
     </section>
   </main>
 </body>
