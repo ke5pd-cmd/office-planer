@@ -256,7 +256,11 @@
     try {
       const { error } = await client.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: window.location.origin }
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname,
+          // Povoliť prihlásenie len používateľom, ktorých správca vopred pozval do Supabase Auth.
+          shouldCreateUser: false
+        }
       });
       if (error) throw error;
       setLoginMessage('Odkaz sme poslali na e-mail. Otvor ho na tomto zariadení a prihlás sa.');
