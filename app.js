@@ -140,7 +140,7 @@
       nameWrap.className = 'person-name';
       const avatar = document.createElement('span');
       avatar.className = 'avatar';
-      avatar.textContent = member.name.trim().split(/\\s+/).slice(0, 2).map(part => part[0] || '').join('');
+      avatar.textContent = member.name.trim().split(/\s+/).slice(0, 2).map(part => part[0] || '').join('');
       const name = document.createElement('span');
       name.textContent = member.name;
       nameWrap.append(avatar, name);
@@ -215,7 +215,7 @@
 
   elements.addPersonForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const name = elements.nameInput.value.trim().replace(/\\s+/g, ' ');
+    const name = elements.nameInput.value.trim().replace(/\s+/g, ' ');
     if (!name) return;
     const button = elements.addPersonForm.querySelector('button[type="submit"]');
     button.disabled = true;
