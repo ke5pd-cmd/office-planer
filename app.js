@@ -5,40 +5,41 @@
   const hasConfig = typeof config.SUPABASE_URL === 'string' &&
     config.SUPABASE_URL.startsWith('https://') &&
     typeof config.SUPABASE_ANON_KEY === 'string' &&
-    config.SUPABASE_ANON_KEY.length > 20 &&
-    !config.SUPABASE_URL.includes('YOUR-PROJECT') &&
-    !config.SUPABASE_ANON_KEY.includes('YOUR_SUPABASE');
+    config.SUPABASE_ANON_KEY.length > 20;
 
   const $ = (id) => document.getElementById(id);
   const elements = {
-    configWarning: $('config-warning'), loginPanel: $('login-panel'), plannerPanel: $('planner-panel'),
-    accountArea: $('account-area'), signedInAs: $('signed-in-as'), logoutButton: $('logout-button'),
-    loginForm: $('login-form'), emailInput: $('email-input'), loginMessage: $('login-message'),
-    prevWeek: $('prev-week'), nextWeek: $('next-week'), thisWeek: $('this-week'), weekLabel: $('week-label'),
-    grid: $('planner-grid'), addPersonForm: $('add-person-form'), nameInput: $('name-input'),
-    appMessage: $('app-message'), refreshButton: $('refresh-button')
+    configWarning: $('config-warning'),
+    plannerPanel: $('planner-panel'),
+    prevWeek: $('prev-week'),
+    nextWeek: $('next-week'),
+    thisWeek: $('this-week'),
+    weekLabel: $('week-label'),
+    grid: $('planner-grid'),
+    addPersonForm: $('add-person-form'),
+    nameInput: $('name-input'),
+    appMessage: $('app-message'),
+    refreshButton: $('refresh-button')
   };
 
-  if (!hasConfig) {
+  if (!hasConfig || !window.supabase || !window.supabase.createClient) {
     elements.configWarning.hidden = false;
-    elements.loginPanel.hidden = true;
     elements.plannerPanel.hidden = true;
     return;
   }
 
-  if (!window.supabase || !window.supabase.createClient) {
-    elements.configWarning.hidden = false;
-    elements.configWarning.innerHTML = '<strong>Nepodarilo sa načítať knižnicu Supabase.</strong><p>Skontroluj internetové pripojenie a obnov stránku.</p>';
-    return;
-  }
+  const client = window.supabase.createClient(
+    config.SUPABASE_URL,
+    config.SUPABASE_ANON_KEY
+  );
 
-  const client = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
   const STATUS = {
     coming: { label: 'Prídem', symbol: '✓', className: 'coming' },
     away: { label: 'Neprídem', symbol: '×', className: 'away' },
     unsure: { label: 'Ešte neviem', symbol: '?', className: 'unsure' }
   };
-  // V sobotu a v nedeľu už plánujeme nasledujúci pracovný týždeň.
+
+  // Od soboty sa zobrazuje nasledujúci pracovný týždeň.
   let weekStart = getPlanningMonday(new Date());
   let lastAutomaticWeek = localDateString(weekStart);
   let refreshTimer = null;
@@ -67,19 +68,9 @@
 
   function getPlanningMonday(date) {
     const monday = getMonday(date);
-    // Sobota (6) a nedeľa (0): nový plánovací týždeň začína najbližší pondelok.
-    return (date.getDay() === 6 || date.getDay() === 0) ? addDays(monday, 7) : monday;
-  }
-
-  function checkForNewPlanningWeek() {
-    const nextPlanningMonday = getPlanningMonday(new Date());
-    const nextKey = localDateString(nextPlanningMonday);
-    if (nextKey === lastAutomaticWeek) return;
-
-    // Týždeň sa prepne automaticky, ale predchádzajúce záznamy zostávajú v databáze.
-    lastAutomaticWeek = nextKey;
-    weekStart = nextPlanningMonday;
-    loadWeek();
+    return (date.getDay() === 6 || date.getDay() === 0)
+      ? addDays(monday, 7)
+      : monday;
   }
 
   function formatDate(date, options) {
@@ -91,45 +82,14 @@
     elements.appMessage.style.color = isError ? '#bd4141' : '#65728a';
   }
 
-  function setLoginMessage(message, isError = false) {
-    elements.loginMessage.textContent = message;
-    elements.loginMessage.style.color = isError ? '#bd4141' : '#52705f';
-  }
-
-  function showSignedOut() {
-    elements.loginPanel.hidden = false;
-    elements.plannerPanel.hidden = true;
-    elements.accountArea.hidden = true;
-    if (refreshTimer) window.clearInterval(refreshTimer);
-    if (dayCheckTimer) window.clearInterval(dayCheckTimer);
-  }
-
-  async function showSignedIn(session) {
-    elements.loginPanel.hidden = true;
-    elements.plannerPanel.hidden = false;
-    elements.accountArea.hidden = false;
-    elements.signedInAs.textContent = session.user.email || 'Prihlásený používateľ';
-    await loadWeek();
-    if (refreshTimer) window.clearInterval(refreshTimer);
-    if (dayCheckTimer) window.clearInterval(dayCheckTimer);
-    refreshTimer = window.setInterval(() => {
-      checkForNewPlanningWeek();
-      loadWeek(true);
-    }, 20000);
-    // Nezávislá kontrola dňa zabezpečí automatický prechod aj pri otvorenej karte.
-    dayCheckTimer = window.setInterval(checkForNewPlanningWeek, 60000);
-  }
-
   function updateWeekLabel() {
     const friday = addDays(weekStart, 4);
     const startMonth = formatDate(weekStart, { month: 'long' });
     const endMonth = formatDate(friday, { month: 'long' });
-    const startDay = weekStart.getDate();
-    const endDay = friday.getDate();
     const year = friday.getFullYear();
     elements.weekLabel.textContent = startMonth === endMonth
-      ? `${startDay}. – ${endDay}. ${endMonth} ${year}`
-      : `${startDay}. ${startMonth} – ${endDay}. ${endMonth} ${year}`;
+      ? `${weekStart.getDate()}. – ${friday.getDate()}. ${endMonth} ${year}`
+      : `${weekStart.getDate()}. ${startMonth} – ${friday.getDate()}. ${endMonth} ${year}`;
   }
 
   function renderGrid(members, attendance) {
@@ -137,10 +97,15 @@
     const days = Array.from({ length: 5 }, (_, i) => addDays(weekStart, i));
     const today = localDateString(new Date());
     const byCell = new Map();
-    attendance.forEach((row) => byCell.set(`${row.member_id}:${row.day}`, row.status));
+    attendance.forEach((row) => {
+      byCell.set(`${row.member_id}:${row.day}`, row.status);
+    });
 
     if (!members.length) {
-      elements.grid.innerHTML = '<div class="empty-state">Zatiaľ tu nikto nie je. Pridaj prvého kolegu alebo kolegyňu nižšie.</div>';
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Zatiaľ tu nikto nie je. Pridaj svoje meno nižšie a označ dni, kedy prídeš.';
+      elements.grid.replaceChildren(empty);
       return;
     }
 
@@ -149,7 +114,7 @@
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     const nameHeader = document.createElement('th');
-    nameHeader.textContent = 'ČLEN TÍMU';
+    nameHeader.textContent = 'MENO';
     headerRow.appendChild(nameHeader);
 
     days.forEach((day) => {
@@ -175,7 +140,7 @@
       nameWrap.className = 'person-name';
       const avatar = document.createElement('span');
       avatar.className = 'avatar';
-      avatar.textContent = member.name.trim().split(/\s+/).slice(0, 2).map(part => part[0] || '').join('');
+      avatar.textContent = member.name.trim().split(/\\s+/).slice(0, 2).map(part => part[0] || '').join('');
       const name = document.createElement('span');
       name.textContent = member.name;
       nameWrap.append(avatar, name);
@@ -189,13 +154,13 @@
         const group = document.createElement('div');
         group.className = 'status-group';
         const currentStatus = byCell.get(`${member.id}:${dayString}`) || '';
-        Object.entries(STATUS).forEach(([statusKey, statusInfo]) => {
+        Object.entries(STATUS).forEach(([statusKey, info]) => {
           const button = document.createElement('button');
           button.type = 'button';
-          button.className = `status-button ${statusInfo.className}`;
-          button.textContent = statusInfo.symbol;
-          button.title = statusInfo.label;
-          button.setAttribute('aria-label', `${member.name}, ${formatDate(day, { weekday: 'long', day: 'numeric', month: 'long' })}: ${statusInfo.label}`);
+          button.className = `status-button ${info.className}`;
+          button.textContent = info.symbol;
+          button.title = info.label;
+          button.setAttribute('aria-label', `${member.name}, ${formatDate(day, { weekday: 'long', day: 'numeric', month: 'long' })}: ${info.label}`);
           button.setAttribute('aria-pressed', String(currentStatus === statusKey));
           button.addEventListener('click', () => saveStatus(member.id, dayString, statusKey));
           group.appendChild(button);
@@ -212,7 +177,9 @@
   async function loadWeek(silent = false) {
     if (loading) return;
     loading = true;
-    if (!silent) elements.grid.innerHTML = '<div class="loading-state">Načítavam plán…</div>';
+    if (!silent) {
+      elements.grid.innerHTML = '<div class="loading-state">Načítavam plán…</div>';
+    }
     const start = localDateString(weekStart);
     const end = localDateString(addDays(weekStart, 5));
     try {
@@ -223,9 +190,9 @@
       if (membersResult.error) throw membersResult.error;
       if (attendanceResult.error) throw attendanceResult.error;
       renderGrid(membersResult.data || [], attendanceResult.data || []);
-      if (!silent) setMessage('Plán je aktuálny. Zmeny sa priebežne ukladajú a obnovujú.');
+      if (!silent) setMessage('Plán je aktuálny. Zmeny sa ukladajú automaticky.');
     } catch (error) {
-      elements.grid.innerHTML = '<div class="empty-state">Nepodarilo sa načítať plán. Skontroluj pripojenie a nastavenie databázy.</div>';
+      elements.grid.innerHTML = '<div class="empty-state">Nepodarilo sa načítať plán. Skontroluj internetové pripojenie.</div>';
       setMessage(error.message || 'Chyba pri načítaní údajov.', true);
     } finally {
       loading = false;
@@ -243,43 +210,12 @@
       return;
     }
     await loadWeek(true);
-    setMessage('Zmena je uložená.');
+    setMessage('Hotovo, zmena je uložená.');
   }
-
-  elements.loginForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const email = elements.emailInput.value.trim();
-    if (!email) return;
-    const button = elements.loginForm.querySelector('button[type="submit"]');
-    button.disabled = true;
-    setLoginMessage('Posielam prihlasovací odkaz…');
-    try {
-      const { error } = await client.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin + window.location.pathname,
-          // Povoliť prihlásenie len používateľom, ktorých správca vopred pozval do Supabase Auth.
-          shouldCreateUser: false
-        }
-      });
-      if (error) throw error;
-      setLoginMessage('Odkaz sme poslali na e-mail. Otvor ho na tomto zariadení a prihlás sa.');
-    } catch (error) {
-      setLoginMessage(error.message || 'Prihlasovací odkaz sa nepodarilo poslať.', true);
-    } finally {
-      button.disabled = false;
-    }
-  });
-
-  elements.logoutButton.addEventListener('click', async () => {
-    const { error } = await client.auth.signOut();
-    if (error) setMessage(error.message, true);
-    else showSignedOut();
-  });
 
   elements.addPersonForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const name = elements.nameInput.value.trim().replace(/\s+/g, ' ');
+    const name = elements.nameInput.value.trim().replace(/\\s+/g, ' ');
     if (!name) return;
     const button = elements.addPersonForm.querySelector('button[type="submit"]');
     button.disabled = true;
@@ -287,12 +223,14 @@
     try {
       const { error } = await client.from('team_members').insert({ name });
       if (error) {
-        if (error.code === '23505') throw new Error('Toto meno už v zozname existuje.');
+        if (error.code === '23505') {
+          throw new Error('Tvoje meno už v zozname je. Nájdeš ho v tabuľke vyššie.');
+        }
         throw error;
       }
       elements.nameInput.value = '';
       await loadWeek(true);
-      setMessage(`Meno „${name}“ bolo pridané do tímu.`);
+      setMessage(`Vitaj v pláne, ${name}! Teraz si vyber stavy pri jednotlivých dňoch.`);
     } catch (error) {
       setMessage(error.message || 'Meno sa nepodarilo pridať.', true);
     } finally {
@@ -300,8 +238,14 @@
     }
   });
 
-  elements.prevWeek.addEventListener('click', () => { weekStart = addDays(weekStart, -7); loadWeek(); });
-  elements.nextWeek.addEventListener('click', () => { weekStart = addDays(weekStart, 7); loadWeek(); });
+  elements.prevWeek.addEventListener('click', () => {
+    weekStart = addDays(weekStart, -7);
+    loadWeek();
+  });
+  elements.nextWeek.addEventListener('click', () => {
+    weekStart = addDays(weekStart, 7);
+    loadWeek();
+  });
   elements.thisWeek.addEventListener('click', () => {
     weekStart = getPlanningMonday(new Date());
     lastAutomaticWeek = localDateString(weekStart);
@@ -309,20 +253,31 @@
   });
   elements.refreshButton.addEventListener('click', () => loadWeek());
 
-  client.auth.onAuthStateChange((_event, session) => {
-    if (session) {
-      // Nevolať async priamo v callbacku auth; odovzdáme riadenie mimo auth eventu.
-      window.setTimeout(() => showSignedIn(session), 0);
-    } else {
-      showSignedOut();
+  function checkForNewPlanningWeek() {
+    const nextPlanningMonday = getPlanningMonday(new Date());
+    const nextKey = localDateString(nextPlanningMonday);
+    if (nextKey === lastAutomaticWeek) return;
+    lastAutomaticWeek = nextKey;
+    weekStart = nextPlanningMonday;
+    loadWeek();
+  }
+
+  // Pravidelné obnovenie zdieľaných údajov a automatický prechod na nový týždeň.
+  refreshTimer = window.setInterval(() => {
+    checkForNewPlanningWeek();
+    loadWeek(true);
+  }, 20000);
+  dayCheckTimer = window.setInterval(checkForNewPlanningWeek, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      checkForNewPlanningWeek();
+      loadWeek(true);
     }
   });
-
-  client.auth.getSession().then(({ data: { session } }) => {
-    if (session) showSignedIn(session);
-    else showSignedOut();
-  }).catch((error) => {
-    showSignedOut();
-    setLoginMessage(error.message || 'Nepodarilo sa overiť prihlásenie.', true);
+  window.addEventListener('focus', () => {
+    checkForNewPlanningWeek();
+    loadWeek(true);
   });
+
+  loadWeek();
 })();
