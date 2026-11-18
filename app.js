@@ -144,6 +144,14 @@
       const name = document.createElement('span');
       name.textContent = member.name;
       nameWrap.append(avatar, name);
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'delete-person-button';
+      deleteButton.textContent = '×';
+      deleteButton.title = `Odstrániť meno ${member.name} aj všetky jeho príchody`;
+      deleteButton.setAttribute('aria-label', `Odstrániť ${member.name} aj všetky príchody`);
+      deleteButton.addEventListener('click', () => deleteMember(member.id, member.name));
+      nameWrap.appendChild(deleteButton);
       nameCell.appendChild(nameWrap);
       row.appendChild(nameCell);
 
@@ -197,6 +205,22 @@
     } finally {
       loading = false;
     }
+  }
+
+  async function deleteMember(memberId, memberName) {
+    const confirmed = window.confirm(
+      `Naozaj chceš odstrániť meno „${memberName}“? Vymažú sa aj všetky jeho uložené príchody a stavy.`
+    );
+    if (!confirmed) return;
+
+    setMessage(`Odstraňujem ${memberName}…`);
+    const { error } = await client.from('team_members').delete().eq('id', memberId);
+    if (error) {
+      setMessage(error.message || 'Meno sa nepodarilo odstrániť.', true);
+      return;
+    }
+    await loadWeek(true);
+    setMessage(`Meno ${memberName} aj jeho príchody boli odstránené. Osoba sa môže znovu pridať.`);
   }
 
   async function saveStatus(memberId, day, status) {
