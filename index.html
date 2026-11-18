@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f8fc">
+  <title>Office plánovač</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">O</div>
+        <div>
+          <p class="eyebrow">TÍMOVÝ PLÁNOVAČ</p>
+          <h1>Office plánovač</h1>
+        </div>
+      </div>
+      <div id="account-area" class="account-area" hidden>
+        <span id="signed-in-as" class="signed-in-as"></span>
+        <button id="logout-button" class="button button-quiet" type="button">Odhlásiť sa</button>
+      </div>
+    </header>
+
+    <section id="config-warning" class="notice notice-warning" hidden>
+      <strong>Ešte treba nastaviť databázu.</strong>
+      <p>Vytvor súbor <code>config.js</code> podľa <code>config.example.js</code> a vlož doň URL a anon key zo Supabase. Postup je v README.</p>
+    </section>
+
+    <section id="login-panel" class="login-panel" hidden>
+      <div class="login-copy">
+        <span class="login-icon" aria-hidden="true">↗</span>
+        <p class="eyebrow">VITAJTE V TÍMOVOM PLÁNOVAČI</p>
+        <h2>Kto príde tento týždeň do officu?</h2>
+        <p>Prihlás sa pracovným e-mailom. Pošleme ti jednorazový prihlasovací odkaz.</p>
+      </div>
+      <form id="login-form" class="login-form">
+        <label for="email-input">Pracovný e-mail</label>
+        <input id="email-input" name="email" type="email" placeholder="meno@firma.com" autocomplete="email" required>
+        <button class="button button-primary button-wide" type="submit">Poslať prihlasovací odkaz</button>
+        <p id="login-message" class="form-message" role="status"></p>
+      </form>
+    </section>
+
+    <section id="planner-panel" hidden>
+      <div class="intro-row">
+        <div>
+          <p class="eyebrow">DOHODNITE SA VOPRED</p>
+          <h2>Kto bude v kancelárii?</h2>
+          <p class="intro-text">Vyber týždeň a označ pri každom dni, či prídeš.</p>
+        </div>
+        <button id="refresh-button" class="button button-quiet refresh-button" type="button" title="Obnoviť údaje">↻ <span>Obnoviť</span></button>
+      </div>
+
+      <div class="week-toolbar">
+        <div class="week-controls">
+          <button id="prev-week" class="icon-button" type="button" aria-label="Predchádzajúci týždeň">‹</button>
+          <div>
+            <div id="week-label" class="week-label"></div>
+            <div class="week-subtitle">Pracovný týždeň · pondelok – piatok</div>
+          </div>
+          <button id="next-week" class="icon-button" type="button" aria-label="Nasledujúci týždeň">›</button>
+        </div>
+        <button id="this-week" class="button button-outline" type="button">Aktuálny plán</button>
+      </div>
+
+      <div class="legend" aria-label="Legenda stavov">
+        <span><i class="dot dot-coming"></i> Prídem</span>
+        <span><i class="dot dot-away"></i> Neprídem</span>
+        <span><i class="dot dot-unsure"></i> Ešte neviem</span>
+      </div>
+
+      <div class="table-card">
+        <div id="planner-grid" class="table-scroll">
+          <div class="loading-state">Načítavam plán…</div>
+        </div>
+      </div>
+
+      <div class="add-person-card">
+        <div class="add-person-copy">
+          <div class="add-person-icon" aria-hidden="true">＋</div>
+          <div>
+            <h3>Pridať kolegu alebo kolegyňu</h3>
+            <p>Meno sa uloží do tímového zoznamu a zostane aj na ďalšie týždne.</p>
+          </div>
+        </div>
+        <form id="add-person-form" class="add-person-form">
+          <label class="visually-hidden" for="name-input">Meno kolegu</label>
+          <input id="name-input" name="name" type="text" maxlength="70" placeholder="Zadaj meno" required>
+          <button class="button button-primary" type="submit">Pridať meno</button>
+        </form>
+      </div>
+      <p id="app-message" class="app-message" role="status"></p>
+      <footer class="footer-note">Zmeny sa ukladajú priebežne a zdieľajú sa s prihláseným tímom.</footer>
+    </section>
+  </main>
+</body>
+</html>
